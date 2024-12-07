@@ -10,58 +10,63 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: read  # Gives the workflow permission to read the contents of the repository
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout code
       - uses: actions/checkout@v4
 
+      # Step 2: Set up Python
       - name: Set up Python version
         uses: actions/setup-python@v3.0.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: 'pip'  # Caches pip dependencies for faster builds
 
+      # Step 3: Create and activate virtual environment
       - name: Create and start virtual environment
         run: |
           python -m venv venv
-          source venv/bin/activate
+          source venv/bin/activate  # Activate the virtual environment
 
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+      # Optional: Add your tests here if you have any (e.g., PyTest, Django tests)
 
+      # Step 5: Upload artifact (the project files except venv)
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v3
         with:
-          name: python-app
+          name: python-app  # Name of the artifact to be uploaded
           path: |
             .  # Include all project files
             !venv/  # Exclude the virtual environment
 
   deploy:
-    permissions:
-      contents: none
     runs-on: ubuntu-latest
-    needs: build
+    needs: build  # This job depends on the successful completion of the build job
     environment:
       name: 'Development'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}  # Store the deployed app's URL
 
     steps:
+      # Step 1: Download the artifact from the build job
       - name: Download artifact from build job
         uses: actions/download-artifact@v3
         with:
-          name: python-app
-          path: .
+          name: python-app  # The artifact name must match the one in the upload-artifact step
+          path: .  # Specify the directory where you want to download the artifact
 
+      # Step 2: Deploy to Azure Web App
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}  # Set your Azure Web App name
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}  # GitHub secret for Azure publish profile
